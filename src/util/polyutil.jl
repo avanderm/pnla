@@ -51,7 +51,7 @@ end
 # Represents a monomial order [Cox,2005]. A weight matrix m transforms the
 # monomial order into a lexicographic ordering problem
 type MonomialOrder{T<:Number}
-    m::Array{T,2}
+    m::SparseMatrixCSC{T,Int64}
 end
 
 # Represents the lexicographic order
@@ -60,7 +60,7 @@ function plex(ordering::Expr)
 end
 
 function plex(ordering::ASCIIString)
-    return plex(parse(plex))
+    return plex(parse(ordering))
 end
 
 # Implements the lexicographic order
@@ -69,17 +69,12 @@ function plex_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder(eye(n))
+        return MonomialOrder(speye(n))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n ]
-        m::Array{Float64,2} = zeros(n,n)
 
-        # Result is a permutation of the identity matrix
-        [ m[i,perm[i]] = 1.0 for i = 1:n ]
-
-        return MonomialOrder(m)
+        return MonomialOrder(sparse(1:n, perm, ones(n)))
     end
 end
 
@@ -98,16 +93,12 @@ function grlex_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder([ones(1,n); eye(n)[1:n-1,:]])
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,1:n-1],ones(2*n-1)))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n-1 ]
-        m::Array{Float64,2} = [ones(1,n); zeros(n-1,n)]
 
-        [ m[i+1,perm[i]] = 1.0 for i = 1:n-1 ]
-
-        return MonomialOrder(m)
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm],ones(2*n-1)))
     end
 end
 
@@ -126,16 +117,12 @@ function tdeg_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder([ones(1,n); fliplr(-eye(n)[1:n-1,:])])
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,n:-1:2],[ones(n),-ones(n-1)]))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 2:n ]
-        m::Array{Float64,2} = [ones(1,n); zeros(n-1,n)]
 
-        [ m[i+1,perm[n-i]] = -1.0 for i = 1:n-1 ]
-
-        return MonomialOrder(m)
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm[end:-1:1]],[ones(n),-ones(n-1)]))
     end
 end
 
@@ -262,6 +249,14 @@ function sym2poly_power(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vard
     return coef, expn
 end
 
+# SYM2POLY
+function sym2poly_divide(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
+    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+
+    # Divide all coefficients by what is assumed to be a Number
+    return (coef/eval(terms[2])), expn
+end
+
 # SYM2POLY (circumvent Julia's not defined error)
 function sym2poly_dict()
     dict = {
@@ -269,6 +264,7 @@ function sym2poly_dict()
         :- => sym2poly_minus,
         :* => sym2poly_product,
         :^ => sym2poly_power,
+        :/ => sym2poly_divide,
         :x => sym2poly_symbol,
         :c => sym2poly_number
     }
@@ -406,7 +402,8 @@ function process_term(eq::Expr, opdict::Dict{Symbol,Function}, vardict::Dict{Sym
         if haskey(opdict, eq.args[1])
             return opdict[eq.args[1]](eq.args[2:end], opdict, vardict)
         else
-            error("Invalid operator: $(eq.args[1])")
+            # Not recognized operator, assume Number and attempt evaluation
+            return process_term(eval(eq))
         end
     else
         error("Invalid equation: $(eq.head)")
