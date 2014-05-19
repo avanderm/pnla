@@ -18,11 +18,14 @@ export
     poly2sym,
     evalsys
 
+const wp = Float64      # working precision
+const ep = Int64        # exponent precision
+
 # Represents a polynomial system using coefficients and monomial exponents,
 # variables are considered nameless from the numerical point of view
 type PolySys
-    coef::Array{Vector{Float64},1}
-    expn::Array{Array{Int64,2},1}
+    coef::Array{Vector{wp},1}
+    expn::Array{SparseMatrixCSC{ep,Int64},1}
 end
 
 # Represents a symbolic system of expressions in a number of user defined
@@ -50,8 +53,8 @@ end
 
 # Represents a monomial order [Cox,2005]. A weight matrix m transforms the
 # monomial order into a lexicographic ordering problem
-type MonomialOrder{T<:Number}
-    m::SparseMatrixCSC{T,Int64}
+type MonomialOrder
+    m::SparseMatrixCSC{wp,Int64}
 end
 
 # Represents the lexicographic order
@@ -69,12 +72,12 @@ function plex_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder(speye(n))
+        return MonomialOrder(speye(wp,n))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n ]
 
-        return MonomialOrder(sparse(1:n, perm, ones(n)))
+        return MonomialOrder(sparse(1:n, perm, ones(wp,n)))
     end
 end
 
@@ -93,12 +96,12 @@ function grlex_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,1:n-1],ones(2*n-1)))
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,1:n-1],ones(wp,2*n-1)))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n-1 ]
 
-        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm],ones(2*n-1)))
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm],ones(wp,2*n-1)))
     end
 end
 
@@ -117,12 +120,12 @@ function tdeg_impl(vars::Expr, ordering::Expr)
 
     n::Int64 = length(ordering.args)
     if vars == ordering.args
-        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,n:-1:2],[ones(n),-ones(n-1)]))
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,n:-1:2],[ones(wp,n),-ones(wp,n-1)]))
     else
         dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
         perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 2:n ]
 
-        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm[end:-1:1]],[ones(n),-ones(n-1)]))
+        return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm[end:-1:1]],[ones(wp,n),-ones(wp,n-1)]))
     end
 end
 
@@ -143,8 +146,8 @@ function sym2poly(symsys::SymSys, m::MonomialOrder)
         # System of s > 1 equations
         s = length(symsys.expr.args)
 
-        coef = Array(Vector{Float64},s)
-        expn = Array(Array{Int64,2},s)
+        coef = Array(Vector{wp},s)
+        expn = Array(SparseMatrixCSC{ep,Int64},s)
 
         dict::Dict{Symbol,Integer} =
             Dict(convert(Array{Symbol,1}, symsys.vars.args), 1:length(symsys.vars.args))
@@ -172,9 +175,9 @@ end
 function sym2poly_symbol(symbol::Symbol, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
     # Coefficient 1 and unity vector
     try
-        exp = zeros(Int64,1,length(vardict))
-        exp[vardict[symbol]] = 1
-        return [1.0], exp 
+        exp = spzeros(ep,1,length(vardict))
+        exp[vardict[symbol]] = convert(ep,1)
+        return [convert(wp,1.0)], exp 
     catch
         error("Did not recognize variable $(symbol), not a user defined symbol")
     end
@@ -183,16 +186,16 @@ end
 # SYM2POLY
 function sym2poly_number(number::Number, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
     # Convert to double precision
-    return [convert(Float64, number)], zeros(Int64,1,length(vardict))
+    return [convert(wp, number)], spzeros(ep,1,length(vardict))
 end
 
 # SYN2POLY
 function sym2poly_plus(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
-    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+    (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     # Dynamic array growth
     for i = 2:length(terms)
-        (coeft::Vector{Float64}, expnt::Array{Int64,2}) = process_term(terms[i], opdict, vardict)
+        (coeft::Vector{wp}, expnt::SparseMatrixCSC{ep,Int64}) = process_term(terms[i], opdict, vardict)
 
         coef = vcat(coef, coeft)
         expn = vcat(expn, expnt)
@@ -203,14 +206,14 @@ end
 
 # SYM2POLY
 function sym2poly_minus(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
-    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+    (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     if length(terms) == 1
         # Expression of form -y
         return -coef, expn
     else
         # Expression of form x - y
-        (coefr::Vector{Float64}, expnr::Array{Int64,2}) = process_term(terms[2], opdict, vardict)
+        (coefr::Vector{wp}, expnr::SparseMatrixCSC{ep,Int64}) = process_term(terms[2], opdict, vardict)
 
         coef = vcat(coef, -coefr)
         expn = vcat(expn, expnr)
@@ -220,10 +223,10 @@ end
 
 # SYM2POLY
 function sym2poly_product(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
-    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+    (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     for i = 2:length(terms)
-        (coeft::Vector{Float64}, expnt::Array{Int64,2}) = process_term(terms[i], opdict, vardict)
+        (coeft::Vector{wp}, expnt::SparseMatrixCSC{ep,Int64}) = process_term(terms[i], opdict, vardict)
 
         # Coefficients can be determined by generalized outer product
         coef = kron(coeft, coef)
@@ -237,10 +240,10 @@ end
 
 # SYM2POLY
 function sym2poly_power(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
-    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+    (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     # Same principle as sym2poly_product but more efficiently implemented
-    (coeft::Vector{Float64}, expnt::Array{Int64,2}) = (coef, expn)
+    (coeft::Vector{wp}, expnt::SparseMatrixCSC{ep,Int64}) = (coef, expn)
     for i = 2:terms[2]
         coef = kron(coeft, coef)
         expn = vcat([ broadcast(+,expn,expnt[i,:]) for i in 1:size(expnt,1) ]...)
@@ -251,7 +254,7 @@ end
 
 # SYM2POLY
 function sym2poly_divide(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
-    (coef::Vector{Float64}, expn::Array{Int64,2}) = process_term(terms[1], opdict, vardict)
+    (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     # Divide all coefficients by what is assumed to be a Number
     return (coef/eval(terms[2])), expn
@@ -273,9 +276,9 @@ function sym2poly_dict()
 end
 
 # Merges coefficients of duplicate monomials in polynomial
-function poly_reduce(coef::Vector{Float64}, expn::Array{Int64,2})
+function poly_reduce(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64})
     n = length(coef)
-    coefc::Vector{Float64} = zeros(Float64,n)
+    coefc::Vector{wp} = zeros(wp,n)
 
     mask::Vector{Bool} = convert(Vector{Bool}, ones(n))
 
@@ -284,7 +287,7 @@ function poly_reduce(coef::Vector{Float64}, expn::Array{Int64,2})
             # Skip duplicates
             continue
         else
-            ind::Vector{Int64} = filter(j->expn[j,:] == expn[i,:], i:n)
+            ind::Vector{ep} = filter(j->expn[j,:] == expn[i,:], i:n)
 
             # Update coefficient
             coefc[i] = sum(coef[ind])
@@ -297,14 +300,14 @@ function poly_reduce(coef::Vector{Float64}, expn::Array{Int64,2})
 
     # Reduction of polynomial
     coefc = coefc[mask]
-    expnc::Array{Int64,2} = expn[mask,:]
+    expnc::SparseMatrixCSC{ep,Int64} = expn[mask,:]
 
     return coefc, expnc
 end
 
 # Sorts the monomials by transforming the order problem into a lexicographic setting
 # using the monomial order weighting matrix [Cox,2005]
-function poly_sort(coef::Vector{Float64}, expn::Array{Int64,2}, morder::MonomialOrder)
+function poly_sort(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, morder::MonomialOrder)
     # Code for sortcols has been adopted from base library to obtain the permutation p
     A = morder.m*expn'
 
@@ -343,7 +346,7 @@ function poly2sym(polysys::PolySys)
 end
 
 # Processes a single equation, symbol or constant
-function poly2sym_eq(coef::Vector{Float64}, expn::Array{Int64,2}, vars::Expr)
+function poly2sym_eq(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
     nmons = length(coef)
 
     # Cannot assume eq to be of type Expression
@@ -358,7 +361,7 @@ function poly2sym_eq(coef::Vector{Float64}, expn::Array{Int64,2}, vars::Expr)
 end
 
 # Processes a monomial
-function poly2sym_monomial(coef::Float64, expn::Array{Int64,2}, vars::Expr)
+function poly2sym_monomial(coef::wp, expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
     if findnext(expn,1) == 0
         # Constant case
         return coef
@@ -377,21 +380,21 @@ function poly2sym_monomial(coef::Float64, expn::Array{Int64,2}, vars::Expr)
 end
 
 # Evaluates equation system in points stores as row in a matrix
-function evalsys(sys::SymSys, val::Array{Float64,2})
+function evalsys(sys::SymSys, val::Array{wp,2})
     [ sys.f(val[i,:]...) for i in 1:size(val,1) ]
 end
 
 function evalsys(sys::SymSys, val::Array{Any,2})
-    evalsys(sys, convert(Array{Float64,2}, val))
+    evalsys(sys, convert(Array{wp,2}, val))
 end
 
 # Evaluates equation system using array of vectors (double precision)
-function evalsys(sys::SymSys, val::Array{Vector{Float64},1})
+function evalsys(sys::SymSys, val::Array{Vector{wp},1})
     [ sys.f(val[i]...) for i in 1:length(val) ]
 end
 
 function evalsys(sys::SymSys, val::Array{Any,1})
-    evalsys(sys, convert(Array{Vector{Float64},1}, val))
+    evalsys(sys, convert(Array{Vector{wp},1}, val))
 end
 
 # Processes term of type Expression and determines first operator
