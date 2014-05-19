@@ -153,8 +153,8 @@ function sym2poly(symsys::SymSys, m::MonomialOrder)
             Dict(convert(Array{Symbol,1}, symsys.vars.args), 1:length(symsys.vars.args))
 
         for i = 1:length(symsys.expr.args)
-            (coef[i], expn[i]) = poly_sort(poly_reduce(
-                process_term(symsys.expr.args[i],sym2poly_dict(),dict)...)...,m)
+            (coef[i], expn[i]) = poly_reduce(poly_sort(
+                process_term(symsys.expr.args[i],sym2poly_dict(),dict)..., m)...)
         end
 
         return PolySys(coef,expn)
@@ -275,36 +275,6 @@ function sym2poly_dict()
     return convert(Dict{Symbol,Function}, dict)
 end
 
-# Merges coefficients of duplicate monomials in polynomial
-function poly_reduce(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64})
-    n = length(coef)
-    coefc::Vector{wp} = zeros(wp,n)
-
-    mask::Vector{Bool} = convert(Vector{Bool}, ones(n))
-
-    for i = 1:n
-        if ~mask[i]
-            # Skip duplicates
-            continue
-        else
-            ind::Vector{ep} = filter(j->expn[j,:] == expn[i,:], i:n)
-
-            # Update coefficient
-            coefc[i] = sum(coef[ind])
-            # Delete duplicates from mask
-            if length(ind) > 1
-                mask[ind[2:end]] = false
-            end
-        end
-    end
-
-    # Reduction of polynomial
-    coefc = coefc[mask]
-    expnc::SparseMatrixCSC{ep,Int64} = expn[mask,:]
-
-    return coefc, expnc
-end
-
 # Sorts the monomials by transforming the order problem into a lexicographic setting
 # using the monomial order weighting matrix [Cox,2005]
 function poly_sort(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, morder::MonomialOrder)
@@ -316,6 +286,29 @@ function poly_sort(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, morder::Mo
     p = flipud(sortperm(cols, order=Lexicographic))
 
     return coef[p], expn[p,:]
+end
+
+# Merges coefficients of duplicate monomials in polynomial, assumes ordered by poly_sort
+function poly_reduce(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64})
+    n = length(coef)
+    coefr::SparseMatrixCSC{wp,Int64} = spzeros(wp,n,1)
+
+    current = 1
+    coefr[current] = coef[current]
+
+    for i = 2:n
+        if expn[i,:] == expn[current,:]
+            coefr[current] += coef[i]
+        else
+            current = i
+            coefr[current] = coef[current]
+        end
+    end
+
+    # Reduction of polynomial
+    (Ti,Tj,Tz) = findnz(coefr)
+
+    return Tz, expn[Ti,:]
 end
 
 # Builds a SymSys object using a PolySys object. Minus operators are supressed in sums by
