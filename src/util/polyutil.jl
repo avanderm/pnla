@@ -18,8 +18,9 @@ export
     poly2sym,
     evalsys
 
-const wp = Float64      # working precision
-const ep = Int64        # exponent precision
+const wp = Float64              # working precision
+const ep = Int64                # exponent precision
+const cp = Complex{Float64}     # calculation precision (variable values)
 
 # Represents a polynomial system using coefficients and monomial exponents,
 # variables are considered nameless from the numerical point of view
@@ -373,22 +374,18 @@ function poly2sym_monomial(coef::wp, expn::SparseMatrixCSC{ep,Int64}, vars::Expr
 end
 
 # Evaluates equation system in points stores as row in a matrix
-function evalsys(sys::SymSys, val::Array{wp,2})
-    [ sys.f(val[i,:]...) for i in 1:size(val,1) ]
-end
-
-function evalsys(sys::SymSys, val::Array{Any,2})
-    evalsys(sys, convert(Array{wp,2}, val))
+function evalsys{T<:Number}(sys::SymSys, val::Array{T,2})
+    [ sys.f(convert(Array{cp,2}, val[i,:])...) for i in 1:size(val,1) ]
 end
 
 # Evaluates equation system using array of vectors (double precision)
-function evalsys(sys::SymSys, val::Array{Vector{wp},1})
-    [ sys.f(val[i]...) for i in 1:length(val) ]
+function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
+    [ sys.f(convert(Vector{cp},val[i])...) for i in 1:length(val) ]
 end
 
-function evalsys(sys::SymSys, val::Array{Any,1})
-    evalsys(sys, convert(Array{Vector{wp},1}, val))
-end
+#function evalsys(sys::SymSys, val::Array{T<:Number,1})
+#    evalsys(sys, convert(Array{Vector{cp},1}, val))
+#end
 
 # Processes term of type Expression and determines first operator
 function process_term(eq::Expr, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
