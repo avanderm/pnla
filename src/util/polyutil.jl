@@ -383,10 +383,6 @@ function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
     [ sys.f(convert(Vector{cp},val[i])...) for i in 1:length(val) ]
 end
 
-#function evalsys(sys::SymSys, val::Array{T<:Number,1})
-#    evalsys(sys, convert(Array{Vector{cp},1}, val))
-#end
-
 # Processes term of type Expression and determines first operator
 function process_term(eq::Expr, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
     # Test if expression (no nested tuples, assignment, ...)
