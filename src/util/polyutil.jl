@@ -190,7 +190,7 @@ function sym2poly_number(number::Number, opdict::Dict{Symbol,Function}, vardict:
     return [convert(wp, number)], spzeros(ep,1,length(vardict))
 end
 
-# SYN2POLY
+# SYM2POLY
 function sym2poly_plus(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
     (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
@@ -276,8 +276,8 @@ function sym2poly_dict()
     return convert(Dict{Symbol,Function}, dict)
 end
 
-# Sorts the monomials by transforming the order problem into a lexicographic setting
-# using the monomial order weighting matrix [Cox,2005]
+# Sorts the monomials by transforming the order problem into a lexicographic setting using the
+# monomial order weighting matrix [Cox,2005]
 function poly_sort(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, morder::MonomialOrder)
     # Code for sortcols has been adopted from base library to obtain the permutation p
     A = morder.m*expn'
@@ -378,7 +378,7 @@ function evalsys{T<:Number}(sys::SymSys, val::Array{T,2})
     [ sys.f(convert(Array{cp,2}, val[i,:])...) for i in 1:size(val,1) ]
 end
 
-# Evaluates equation system using array of vectors (double precision)
+# Evaluates equation system using array of vectors
 function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
     [ sys.f(convert(Vector{cp},val[i])...) for i in 1:length(val) ]
 end
