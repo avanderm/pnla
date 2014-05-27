@@ -85,7 +85,7 @@ function grlex(ordering::Expr)
     return (vars::Expr)->grlex_impl(vars, ordering)
 end
 
-grlex(ordering::Symbol)      = grlex(:($ordering,))
+grlex(ordering::Symbol)      = grlex(symbols(ordering))
 grlex(ordering::ASCIIString) = grlex(parse(ordering))
 
 # Implements the graded lexicographic order
@@ -108,7 +108,7 @@ function tdeg(ordering::Expr)
     return (vars::Expr)->tdeg_impl(vars, ordering)
 end
 
-tdeg(ordering::Symbol)      = tdeg(:($ordering,))
+tdeg(ordering::Symbol)      = tdeg(symbols(ordering))
 tdeg(ordering::ASCIIString) = tdeg(parse(ordering))
 
 # Implements the graded reverse lexicographic order
@@ -130,6 +130,8 @@ end
 function reorder(sys::SymSys, vars::Expr)
     SymSys(sys.expr, vars)
 end
+
+reorder(sys::SymSys, vars::ASCIIString) = reorder(sys, parse(vars))
 
 # Builds a PolySys object using a SymSys object. Alongside construction, the equations are expanded,
 # simplified, merged for equal powers with a user defined monomial ordering.
@@ -251,7 +253,11 @@ function sym2poly_divide(terms::Array{Any,1}, opdict::Dict{Symbol,Function}, var
     (coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}) = process_term(terms[1], opdict, vardict)
 
     # Divide all coefficients by what is assumed to be a Number
-    return (coef/eval(terms[2])), expn
+    try
+        return (coef/eval(terms[2])), expn
+    catch e
+        error("Non valid operation in polynomial construction: division by $(e.var)")
+    end
 end
 
 # SYM2POLY (circumvent Julia's not defined error)
@@ -311,10 +317,15 @@ end
 function poly2sym(polysys::PolySys, vars::Expr)
     @assert size(polysys.expn[1],2) == length(vars.args)
 
-    nexpr = size(polysys.expn,1)
+    s = size(polysys.expn,1)
     # Generate expressions
-    expr::Expr = Expr(:tuple,[ poly2sym_eq(polysys.coef[i], polysys.expn[i], vars)
-        for i = 1:nexpr ]...)
+    expr::Expr
+    if s > 1
+        expr = Expr(:tuple,[ poly2sym_eq(polysys.coef[i], polysys.expn[i], vars)
+            for i = 1:s ]...)
+    else
+        expr = poly2sym_eq(polysys.coef[1], polysys.expn[1,:], vars)
+    end
 
     SymSys(expr,vars)
 end
