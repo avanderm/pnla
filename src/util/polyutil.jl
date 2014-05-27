@@ -378,16 +378,13 @@ type NestedHorner
     end
 
     NestedHorner(polysys::PolySys, vars::Expr, morder::Function) = NestedHorner(polysys, vars, morder(vars))
-
     NestedHorner(polysys::PolySys, vars::Expr)  = NestedHorner(polysys, vars, tdeg(vars))
+
     NestedHorner(polysys::PolySys, var::Symbol) = NestedHorner(polysys, symbols(var), tdeg(var))
 
-    NestedHorner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) =
-        NestedHorner(polysys, parse(vars), m)
-    NestedHorner(polysys::PolySys, vars::ASCIIString, morder::Function) =
-        NestedHorner(polysys, parse(vars), morder(parse(vars)))
-    NestedHorner(polysys::PolySys, vars::ASCIIString) = 
-        NestedHorner(polysys, parse(vars))
+    NestedHorner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = NestedHorner(polysys, parse(vars), m)
+    NestedHorner(polysys::PolySys, vars::ASCIIString, morder::Function) = NestedHorner(polysys, parse(vars), morder(parse(vars)))
+    NestedHorner(polysys::PolySys, vars::ASCIIString) = NestedHorner(polysys, parse(vars))
 
     function NestedHorner(polysys::PolySys)
         nvars = size(polysys.expn[1],2)
@@ -496,7 +493,7 @@ function poly2sym_term(coef::wp, expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
     end
 end
 
-# Processes a leading monomial
+# Processes a monomial
 function poly2sym_monomial(expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
     # Helper function for powers, variables of power 1 added without explicit power
     pow = (sym::Symbol, n::Integer)->(
