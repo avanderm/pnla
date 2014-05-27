@@ -57,7 +57,7 @@ type MonomialOrder
     m::SparseMatrixCSC{wp,Int64}
 end
 
-# Represents the lexicographic order
+# Constructs the lexicographic order
 function plex(ordering::Expr)
     return (vars::Expr)->plex_impl(vars, ordering)
 end
@@ -80,9 +80,7 @@ function plex_impl(vars::Expr, ordering::Expr)
     end
 end
 
-plex_impl(var::Symbol, ordering::Symbol) = plex_impl(symbol(var), symbols(ordering))
-
-# Represents the graded lexicographic order
+# Constructs the graded lexicographic order
 function grlex(ordering::Expr)
     return (vars::Expr)->grlex_impl(vars, ordering)
 end
@@ -105,9 +103,7 @@ function grlex_impl(vars::Expr, ordering::Expr)
     end
 end
 
-grlex_impl(var::Symbol, ordering::Symbol) = grlex_impl(symbols(var), symbols(ordering))
-
-# Represents the graded reverse lexicographic order
+# Constructs the graded reverse lexicographic order
 function tdeg(ordering::Expr)
     return (vars::Expr)->tdeg_impl(vars, ordering)
 end
@@ -129,8 +125,6 @@ function tdeg_impl(vars::Expr, ordering::Expr)
         return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm[end:-1:1]],[ones(wp,n),-ones(wp,n-1)]))
     end
 end
-
-tdeg_impl(var::Symbol, ordering::Symbol) = tdeg_impl(symbols(var), symbols(ordering))
 
 # Reorder variables for a SymSys object (function needs to be reestablished for correct variable linking)
 function reorder(sys::SymSys, vars::Expr)
@@ -382,7 +376,7 @@ type NestedHorner
     NestedHorner(polysys::PolySys, vars::ASCIIString, morder::Function) =
         NestedHorner(polysys, parse(vars), morder(parse(vars)))
     NestedHorner(polysys::PolySys, vars::ASCIIString) = 
-        NestedHorner(polysys, parse(vars), tdeg(parse(vars)))
+        NestedHorner(polysys, parse(vars))
 
     function NestedHorner(polysys::PolySys)
         nvars = size(polysys.expn[1],2)
