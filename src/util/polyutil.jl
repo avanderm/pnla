@@ -383,8 +383,8 @@ type NestedHorner
     NestedHorner(polysys::PolySys, var::Symbol) = NestedHorner(polysys, symbols(var), tdeg(var))
 
     NestedHorner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = NestedHorner(polysys, parse(vars), m)
-    NestedHorner(polysys::PolySys, vars::ASCIIString, morder::Function) = NestedHorner(polysys, parse(vars), morder(parse(vars)))
-    NestedHorner(polysys::PolySys, vars::ASCIIString) = NestedHorner(polysys, parse(vars))
+    NestedHorner(polysys::PolySys, vars::ASCIIString, morder::Function) = NestedHorner(polysys, vars, morder(parse(vars)))
+    NestedHorner(polysys::PolySys, vars::ASCIIString) = NestedHorner(polysys, vars, tdeg(vars))
 
     function NestedHorner(polysys::PolySys)
         nvars = size(polysys.expn[1],2)
