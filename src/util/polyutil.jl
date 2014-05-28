@@ -1,8 +1,6 @@
 import Base.Order.Lexicographic
 
-const wp = Float64              # working precision
-const ep = Int64                # exponent precision
-const cp = Complex{Float64}     # calculation precision (variable values)
+include(joinpath("..", "global.jl"))
 
 # Represents a polynomial system using coefficients and monomial exponents, variables are considered nameless
 # from the numerical point of view.
@@ -23,7 +21,7 @@ immutable type SymSys
     end
 
     # Univariate case (Symbol is not a Expr)
-    SymSys(expr::Expr, var::Symbol) = SymSys(expr, symbols(var))
+    SymSys(expr::Expr, var::Symbol) = SymSys(expr, sym2expr(var))
 
     # Overloaded functions for text arguments
     SymSys(expr::Expr, vars::ASCIIString)        = SymSys(expr, parse(vars))
@@ -41,7 +39,7 @@ function plex(ordering::Expr)
     return (vars::Expr)->plex_impl(vars, ordering)
 end
 
-plex(ordering::Symbol)      = plex(symbols(ordering))
+plex(ordering::Symbol)      = plex(sym2expr(ordering))
 plex(ordering::ASCIIString) = plex(parse(ordering))
 
 # Implements the lexicographic order
@@ -64,7 +62,7 @@ function grlex(ordering::Expr)
     return (vars::Expr)->grlex_impl(vars, ordering)
 end
 
-grlex(ordering::Symbol)      = grlex(symbols(ordering))
+grlex(ordering::Symbol)      = grlex(sym2expr(ordering))
 grlex(ordering::ASCIIString) = grlex(parse(ordering))
 
 # Implements the graded lexicographic order
@@ -87,7 +85,7 @@ function tdeg(ordering::Expr)
     return (vars::Expr)->tdeg_impl(vars, ordering)
 end
 
-tdeg(ordering::Symbol)      = tdeg(symbols(ordering))
+tdeg(ordering::Symbol)      = tdeg(sym2expr(ordering))
 tdeg(ordering::ASCIIString) = tdeg(parse(ordering))
 
 # Implements the graded reverse lexicographic order
@@ -355,7 +353,7 @@ end
 poly2horner(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) =
     poly2horner(polysys, vars, morder(vars))
 poly2horner(polysys::PolySys, var::Symbol) =
-    poly2horner(polysys, symbols(var))
+    poly2horner(polysys, sym2expr(var))
 
 poly2horner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) =
     poly2horner(polysys, parse(vars), m)
@@ -538,6 +536,6 @@ function process_term(number::Number, opdict::Dict{Symbol,Function}, vardict::Di
 end
 
 # Helper functions
-function symbols(sym::Symbol)
+function sym2expr(sym::Symbol)
     return :($sym,)
 end

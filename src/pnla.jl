@@ -1,15 +1,15 @@
 module PNLA
 
     export
-    #Types
+    #Types polyutil.jl
         PolySys,
         SymSys,
         MonomialOrder
 
     export
-    #Functions
+    #Functions polyutil.jl
         plex,
-        grles,
+        grlex,
         tdeg,
         reorder,
         sym2poly,
@@ -17,6 +17,17 @@ module PNLA
         poly2horner,
         evalsys
 
+    export
+    #Functions basics.jl
+        degeqs,
+        degmax
+        
+    export
+    #Functions bounds.jl
+        bezout
+
     include(joinpath("util", "polyutil.jl"))
+    include("basics.jl")
+    include("bounds.jl")
 
 end #module
