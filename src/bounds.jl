@@ -1,8 +1,11 @@
 include("basics.jl")
+include("errors.jl")
 
+# Computes the number of projective solutions. Requires the number of equations to be equal to the number of variables.
 function bezout(polysys::PolySys)
     # Number of variables must be equal to the number of equations
-    @assert size(polysys.expn[1], 2) == length(polysys.expn)
+    s::Integer = length(polysys.expn)
+    n::Integer = size(polysys.expn[1], 2)
 
-    reduce(*, degeqs(polysys))
+    s > n? throw(OverDeterminedError(polysys)): s < n? throw(UnderDeterminedError(polysys)): reduce(*, degeqs(polysys))
 end

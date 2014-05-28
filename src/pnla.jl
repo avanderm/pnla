@@ -7,6 +7,11 @@ module PNLA
         MonomialOrder
 
     export
+    #Types errors.jl
+        OverDeterminedError,
+        UnderDeterminedError
+
+    export
     #Functions polyutil.jl
         plex,
         grlex,
@@ -29,5 +34,6 @@ module PNLA
     include(joinpath("util", "polyutil.jl"))
     include("basics.jl")
     include("bounds.jl")
+    include("errors.jl")
 
 end #module
