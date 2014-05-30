@@ -495,12 +495,12 @@ end
 
 # Evaluates equation system in points stored as rows in a matrix
 function evalsys{T<:Number}(sys::SymSys, val::Array{T,2})
-    vcat([ collect(sys.func(convert(Array{cp,2}, val[i,:])...))' for i in 1:size(val,1) ]...)
+    vcat([ collect(sys.f(convert(Array{cp,2}, val[i,:])...))' for i in 1:size(val,1) ]...)
 end
 
 # Evaluates equation system using array of vectors
 function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
-    vcat([ collect(sys.func(convert(Vector{cp},val[i])...)') for i in 1:length(val) ]...)
+    vcat([ collect(sys.f(convert(Vector{cp},val[i])...)') for i in 1:length(val) ]...)
 end
 
 evalsys(sys::SymSys, val::Array{Any,1}) = evalsys(sys, convert(Array{Vector{cp},1}, val))

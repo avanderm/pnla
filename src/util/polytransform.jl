@@ -1,0 +1,1 @@
+include(joinpath("..", "global.jl"))
