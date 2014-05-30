@@ -305,14 +305,18 @@ function poly2sym(polysys::PolySys, vars::Expr)
     SymSys(expr,vars)
 end
 
-poly2sym(polysys::PolySys, vars::ASCIIString) = poly2sym(polysys, parse(vars))
+poly2sym(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) = poly2sym(polysys, vars, morder(vars))
+poly2sym(polysys::PolySys, var::Symbol) = poly2sym(polysys, sym2expr(var))
+
+poly2sym(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = poly2sym(polysys, parse(vars), m)
+poly2sym(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) = poly2sym(polysys, vars, morder(parse(vars)))
 
 # Creates anonymous variables
 function poly2sym(polysys::PolySys)
-    nvars = size(polysys.expn[1],2)
+    n = size(polysys.expn[1],2)
     
     # Generate anonymous variables
-    vars::Expr = Expr(:tuple,[ symbol("x$i") for i = 1:nvars ]...)
+    vars::Expr = Expr(:tuple,[ symbol("x$i") for i = 1:n ]...)
 
     poly2sym(polysys, vars)
 end
@@ -350,15 +354,11 @@ function poly2horner(polysys::PolySys, vars::Expr, m::MonomialOrder)
     SymSys(expr, vars)
 end
 
-poly2horner(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) =
-    poly2horner(polysys, vars, morder(vars))
-poly2horner(polysys::PolySys, var::Symbol) =
-    poly2horner(polysys, sym2expr(var))
+poly2horner(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) = poly2horner(polysys, vars, morder(vars))
+poly2horner(polysys::PolySys, var::Symbol) = poly2horner(polysys, sym2expr(var))
 
-poly2horner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) =
-    poly2horner(polysys, parse(vars), m)
-poly2horner(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) =
-    poly2horner(polysys, vars, morder(parse(vars)))
+poly2horner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = poly2horner(polysys, parse(vars), m)
+poly2horner(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) = poly2horner(polysys, vars, morder(parse(vars)))
 
 function poly2horner(polysys::PolySys)
     n::Integer = size(polysys.expn[1],2)

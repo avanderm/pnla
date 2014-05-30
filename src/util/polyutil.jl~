@@ -305,14 +305,18 @@ function poly2sym(polysys::PolySys, vars::Expr)
     SymSys(expr,vars)
 end
 
-poly2sym(polysys::PolySys, vars::ASCIIString) = poly2sym(polysys, parse(vars))
+poly2sym(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) = poly2sym(polysys, vars, morder(vars))
+poly2sym(polysys::PolySys, var::Symbol) = poly2sym(polysys, sym2expr(var))
+
+poly2sym(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = poly2sym(polysys, parse(vars), m)
+poly2sym(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) = poly2sym(polysys, vars, morder(parse(vars)))
 
 # Creates anonymous variables
 function poly2sym(polysys::PolySys)
-    nvars = size(polysys.expn[1],2)
+    n = size(polysys.expn[1],2)
     
     # Generate anonymous variables
-    vars::Expr = Expr(:tuple,[ symbol("x$i") for i = 1:nvars ]...)
+    vars::Expr = Expr(:tuple,[ symbol("x$i") for i = 1:n ]...)
 
     poly2sym(polysys, vars)
 end
@@ -495,12 +499,12 @@ end
 
 # Evaluates equation system in points stored as rows in a matrix
 function evalsys{T<:Number}(sys::SymSys, val::Array{T,2})
-    vcat([ collect(sys.f(convert(Array{cp,2}, val[i,:])...))' for i in 1:size(val,1) ]...)
+    vcat([ collect(sys.func(convert(Array{cp,2}, val[i,:])...))' for i in 1:size(val,1) ]...)
 end
 
 # Evaluates equation system using array of vectors
 function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
-    vcat([ collect(sys.f(convert(Vector{cp},val[i])...)') for i in 1:length(val) ]...)
+    vcat([ collect(sys.func(convert(Vector{cp},val[i])...)') for i in 1:length(val) ]...)
 end
 
 evalsys(sys::SymSys, val::Array{Any,1}) = evalsys(sys, convert(Array{Vector{cp},1}, val))
