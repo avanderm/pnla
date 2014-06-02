@@ -2,6 +2,8 @@ import Base.Order.Lexicographic
 
 include(joinpath("..", "global.jl"))
 
+typealias Var Union(Symbol, Expr)
+
 # Represents a polynomial system using coefficients and monomial exponents, variables are considered nameless
 # from the numerical point of view.
 immutable type PolySys
@@ -13,18 +15,15 @@ end
 # implementing the behavior for easy evaluation.
 immutable type SymSys
     expr::Expr
-    vars::Expr
+    vars::Var
     func::Function
 
-    function SymSys(expr::Expr, vars::Expr)
-        new(expr,vars,eval(:($vars->$expr)))
+    function SymSys(expr::Expr, vars::Var)
+        new(expr, varexpr(vars), eval(:($vars->$expr)))
     end
 
-    # Univariate case (Symbol is not a Expr)
-    SymSys(expr::Expr, var::Symbol) = SymSys(expr, sym2expr(var))
-
     # Overloaded functions for text arguments
-    SymSys(expr::Expr, vars::ASCIIString)        = SymSys(expr, parse(vars))
+    SymSys(expr::Expr,        vars::ASCIIString) = SymSys(expr, parse(vars))
     SymSys(expr::ASCIIString, vars::ASCIIString) = SymSys(parse(expr), vars)
 end
 
@@ -35,76 +34,79 @@ immutable type MonomialOrder
 end
 
 # Constructs the lexicographic order
-function plex(ordering::Expr)
-    return (vars::Expr)->plex_impl(vars, ordering)
+function plex(ordering::Var)
+    return (vars::Var)->plex_impl(vars, ordering)
 end
 
-plex(ordering::Symbol)      = plex(sym2expr(ordering))
 plex(ordering::ASCIIString) = plex(parse(ordering))
 
 # Implements the lexicographic order
-function plex_impl(vars::Expr, ordering::Expr)
-    @assert length(vars.args) == length(ordering.args)
+function plex_impl(vars::Var, ordering::Var)
+    vars_expr::Expr = varexpr(vars)
+    ordering_expr::Expr = varexpr(ordering)
+    @assert length(vars_expr.args) == length(ordering_expr.args)
 
-    n::Int64 = length(ordering.args)
-    if vars == ordering.args
+    n::Int64 = length(ordering_expr.args)
+    if vars == ordering_expr.args
         return MonomialOrder(speye(wp,n))
     else
-        dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-        perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n ]
+        dict::Dict{Symbol,Int64} = Dict(vars_expr.args, 1:n)
+        perm::Vector{Int64} = [ dict[ordering_expr.args[i]] for i = 1:n ]
 
         return MonomialOrder(sparse(1:n, perm, ones(wp,n)))
     end
 end
 
 # Constructs the graded lexicographic order
-function grlex(ordering::Expr)
-    return (vars::Expr)->grlex_impl(vars, ordering)
+function grlex(ordering::Var)
+    return (vars::Var)->grlex_impl(vars, ordering)
 end
 
-grlex(ordering::Symbol)      = grlex(sym2expr(ordering))
 grlex(ordering::ASCIIString) = grlex(parse(ordering))
 
 # Implements the graded lexicographic order
-function grlex_impl(vars::Expr, ordering::Expr)
-    @assert length(vars.args) == length(ordering.args)
+function grlex_impl(vars::Var, ordering::Var)
+    vars_expr::Expr = varexpr(vars)
+    ordering_expr::Expr = varexpr(ordering)
+    @assert length(vars_expr.args) == length(ordering_expr.args)
 
-    n::Int64 = length(ordering.args)
-    if vars == ordering.args
+    n::Int64 = length(ordering_expr.args)
+    if vars == ordering_expr.args
         return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,1:n-1],ones(wp,2*n-1)))
     else
-        dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-        perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 1:n-1 ]
+        dict::Dict{Symbol,Int64} = Dict(vars_expr.args, 1:n)
+        perm::Vector{Int64} = [ dict[ordering_expr.args[i]] for i = 1:n-1 ]
 
         return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm],ones(wp,2*n-1)))
     end
 end
 
 # Constructs the graded reverse lexicographic order
-function tdeg(ordering::Expr)
-    return (vars::Expr)->tdeg_impl(vars, ordering)
+function tdeg(ordering::Var)
+    return (vars::Var)->tdeg_impl(vars, ordering)
 end
 
-tdeg(ordering::Symbol)      = tdeg(sym2expr(ordering))
 tdeg(ordering::ASCIIString) = tdeg(parse(ordering))
 
 # Implements the graded reverse lexicographic order
-function tdeg_impl(vars::Expr, ordering::Expr)
-    @assert length(vars.args) == length(ordering.args)
+function tdeg_impl(vars::Var, ordering::Var)
+    vars_expr::Expr = varexpr(vars)
+    ordering_expr::Expr = varexpr(ordering)
+    @assert length(vars_expr.args) == length(ordering_expr.args)
 
-    n::Int64 = length(ordering.args)
-    if vars == ordering.args
+    n::Int64 = length(ordering_expr.args)
+    if vars == ordering_expr.args
         return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,n:-1:2],[ones(wp,n),-ones(wp,n-1)]))
     else
-        dict::Dict{Symbol,Int64} = Dict(vars.args, 1:n)
-        perm::Vector{Int64} = [ dict[ordering.args[i]] for i = 2:n ]
+        dict::Dict{Symbol,Int64} = Dict(vars_expr.args, 1:n)
+        perm::Vector{Int64} = [ dict[ordering_expr.args[i]] for i = 2:n ]
 
         return MonomialOrder(sparse([ones(Int64,n),2:n],[1:n,perm[end:-1:1]],[ones(wp,n),-ones(wp,n-1)]))
     end
 end
 
 # Reorder variables for a SymSys object (function needs to be reestablished for correct variable linking)
-function reorder(sys::SymSys, vars::Expr)
+function reorder(sys::SymSys, vars::Var)
     SymSys(sys.expr, vars)
 end
 
@@ -141,7 +143,7 @@ function sym2poly(symsys::SymSys, m::MonomialOrder)
 end
 
 # Monomial ordering occurs relative to the order stored by the SymSys object.
-sym2poly(symsys::SymSys, morder::Function) = sym2poly(symsys, morder(symsys.vars))
+sym2poly(symsys::SymSys, mfun::Function) = sym2poly(symsys, mfun(symsys.vars))
 
 #SYM2POLY
 function sym2poly_symbol(symbol::Symbol, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
@@ -252,9 +254,9 @@ end
 
 # Sorts monomials by transforming the order problem into a lexicographic setting using the monomial order
 # weighting matrix [Cox,2005]
-function monomial_sort(expn::SparseMatrixCSC{ep,Int64}, morder::MonomialOrder)
+function monomial_sort(expn::SparseMatrixCSC{ep,Int64}, mfun::MonomialOrder)
     # Transpose for SparseMatrixCSC is simple swap of two index vectors
-    A::SparseMatrixCSC{ep,Int64} = morder.m*expn'
+    A::SparseMatrixCSC{ep,Int64} = mfun.m*expn'
 
     # Code for sortcols has been adopted from base library to obtain the permutation p
     r::UnitRange{Int64} = 1:size(A,1)
@@ -289,27 +291,29 @@ end
 
 # Builds a SymSys object using a PolySys object. Minus operators are supressed in sums by incorporating them
 # into the coefficients of a monomial.
-function poly2sym(polysys::PolySys, vars::Expr)
-    @assert size(polysys.expn[1],2) == length(vars.args)
+function poly2sym(polysys::PolySys, vars::Var, m::MonomialOrder)
+    vars_expr::Expr = varexpr(vars)
+    @assert size(polysys.expn[1],2) == length(vars_expr.args)
 
     s = size(polysys.expn,1)
     # Generate expressions
     expr::Expr
     if s > 1
-        expr = Expr(:tuple,[ poly2sym_eq(polysys.coef[i], polysys.expn[i], vars)
+        expr = Expr(:tuple,[ poly2sym_eq(polysys.coef[i], polysys.expn[i], vars_expr, m)
             for i = 1:s ]...)
     else
-        expr = poly2sym_eq(polysys.coef[1], polysys.expn[1,:], vars)
+        expr = poly2sym_eq(polysys.coef[1], polysys.expn[1], vars_expr, m)
     end
 
-    SymSys(expr,vars)
+    SymSys(expr,vars_expr)
 end
 
-poly2sym(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) = poly2sym(polysys, vars, morder(vars))
-poly2sym(polysys::PolySys, var::Symbol) = poly2sym(polysys, sym2expr(var))
+# Function and symbol overloading
+poly2sym(polysys::PolySys, vars::Var, mfun::Function = tdeg(vars)) = poly2sym(polysys, vars, mfun(vars))
 
+# Text input overloading
 poly2sym(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = poly2sym(polysys, parse(vars), m)
-poly2sym(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) = poly2sym(polysys, vars, morder(parse(vars)))
+poly2sym(polysys::PolySys, vars::ASCIIString, mfun::Function = tdeg(parse(vars))) = poly2sym(polysys, vars, mfun(parse(vars)))
 
 # Creates anonymous variables
 function poly2sym(polysys::PolySys)
@@ -322,44 +326,48 @@ function poly2sym(polysys::PolySys)
 end
 
 # Processes a single equation, symbol or constant
-function poly2sym_eq(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
-    nmons = length(coef)
+function poly2sym_eq(coef::Vector{wp}, expn::SparseMatrixCSC{ep,Int64}, vars::Expr, m::MonomialOrder)
+    r = length(coef)
+
+    # Initial sort
+    (expns::SparseMatrixCSC{ep,Int64}, p::Array{ep,1}) = monomial_sort(expn, m)
 
     # Cannot assume eq to be of type Expression
-    if nmons == 1
-        eq = poly2sym_term(coef[1], expn[1,:], vars)
+    if r == 1
+        eq = poly2sym_term(coef[p[1]], expns[1,:], vars)
     else
-        eq = Expr(:call, :+, [ poly2sym_term(coef[i], expn[i,:], vars)
-            for i in 1:nmons ]...)
+        eq = Expr(:call, :+, [ poly2sym_term(coef[p[i]], expns[i,:], vars)
+            for i in 1:r ]...)
     end
 
     return eq
 end
 
 # A variant to poly2sym, returning a nested Horner system, better suited for evaluation
-function poly2horner(polysys::PolySys, vars::Expr, m::MonomialOrder)
-    @assert size(polysys.expn[1],2) == length(vars.args)
+function poly2horner(polysys::PolySys, vars::Var, m::MonomialOrder)
+    vars_expr::Expr = varexpr(vars)
+    @assert size(polysys.expn[1],2) == length(vars_expr.args)
 
     s::Integer = size(polysys.expn,1)
 
     # Generate expressions
     expr::Expr
     if s > 1
-        expr = Expr(:tuple,[ poly2sym_eq_nested(polysys.coef[i], polysys.expn[i], vars, m)
+        expr = Expr(:tuple,[ poly2sym_eq_nested(polysys.coef[i], polysys.expn[i], vars_expr, m)
             for i = 1:s ]...)
     else
-        expr = poly2sym_eq_nested(polysys.coef[1], polysys.expn[1], vars, m)
+        expr = poly2sym_eq_nested(polysys.coef[1], polysys.expn[1], vars_expr, m)
     end
 
     SymSys(expr, vars)
 end
 
-poly2horner(polysys::PolySys, vars::Expr, morder::Function = tdeg(vars)) = poly2horner(polysys, vars, morder(vars))
-poly2horner(polysys::PolySys, var::Symbol) = poly2horner(polysys, sym2expr(var))
+poly2horner(polysys::PolySys, vars::Var, mfun::Function = tdeg(vars)) = poly2horner(polysys, vars, mfun(vars))
 
 poly2horner(polysys::PolySys, vars::ASCIIString, m::MonomialOrder) = poly2horner(polysys, parse(vars), m)
-poly2horner(polysys::PolySys, vars::ASCIIString, morder::Function = tdeg(parse(vars))) = poly2horner(polysys, vars, morder(parse(vars)))
+poly2horner(polysys::PolySys, vars::ASCIIString, mfun::Function = tdeg(parse(vars))) = poly2horner(polysys, vars, mfun(parse(vars)))
 
+# Creates anonymous variables
 function poly2horner(polysys::PolySys)
     n::Integer = size(polysys.expn[1],2)
     
@@ -427,7 +435,7 @@ end
 # Horner node, equal to the monomial coefficient if a leaf, merges two nodes if an intermediate node
 type HornerNode
     expn::SparseMatrixCSC{ep,Int64}     # Exponent that the node in the Horner scheme represents
-    expr::Any                           # Node value based upon predecessor nodes (Expr or Number)
+    expr::Union(Number, Expr)           # Node value based upon predecessor nodes (Expr or Number)
 
     # Leaf node
     HornerNode(expn::SparseMatrixCSC{ep,Int64}, a::wp) = new(expn, a)
@@ -536,6 +544,10 @@ function process_term(number::Number, opdict::Dict{Symbol,Function}, vardict::Di
 end
 
 # Helper functions
-function sym2expr(sym::Symbol)
-    return :($sym,)
+function varexpr(vars::Var)
+    if typeof(vars) == Expr
+        return vars
+    else
+        return :($vars,)
+    end
 end
