@@ -7,12 +7,12 @@ Polynomial Numerical Linear Algebra package for Julia
 
 This package is in development. For a great PNLA package in a MATLAB/Oktave environment, check out Kim Batselier's code project [here](https://github.com/kbatseli/PNLA_MATLAB_OCTAVE).
 
-# Constructing systems
+## Constructing systems
 
 In order to start working, a system of polynomial equations is needed. This Julia package allows easy switching between a symbolic and numerical representation. For the symbolic object, construct a SymSys object as follows:
 
 ```julia
-include("pnla.jl"); using PNLA;
+require("pnla.jl"); using PNLA;
 eqs = :((x^2 + y^2 + z^2 - 1)/cos(0.3), x-y, 2/sqrt(3)*(x + y + y*z)*(-y))
 var = :(x,y,z)
 sys = SymSys(eqs, var)
@@ -42,7 +42,7 @@ sys = SymSys(uni, :(x))
 evalsys(sys, 2.0, 3.0, 4.0)
 ```
 
-# Numerical representation
+## Numerical representation
 
 In order to start working with the numerical tools in the PNLA package, we need to construct a PolySys object out of the SymSys object. This can be achieved using the sym2poly function. In contrast to a SymSys object, which contains expression, the PolySys object has two fields:
 
@@ -64,7 +64,7 @@ polysys = sym2poly(sys, grlex("z,x,y"))
 polysys = sym2poly(sys, MonomialOrder([ 1 1 1; -1 0 0; 0 0 -1]))
 ```
 
-# Symbolic representation
+## Symbolic representation
 
 The reverse process requires a user-supplied list of variables. The method poly2sym expresses the PolySys object as a sum of monomials
 
@@ -85,4 +85,17 @@ For better stability, the nested Horner scheme can be used. This will alter the 
 ```julia
 nestedsys = poly2horner(polysys, "x,y,z")
 nestedsys = poly2horner(polysys)
+```
+
+## Basic operations
+
+The prevalence of sparse polynomial expressions in many variables has led to an implementation using sparse matrix representations and parallel computing where deemed useful. Basic operations operate first and foremost on PolySys objects. For example
+
+```julia
+# Retrieve degree of each equation
+deqeqs(polysys)
+# Retrieve maximum degree of system
+degmax(polysys)
+# Bezout number (fails if overdetermined or underdetermined
+bezout(polysys)
 ```
