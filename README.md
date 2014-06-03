@@ -13,7 +13,7 @@ In order to start working, a system of polynomial equations is needed. This Juli
 
 ```julia
 require("pnla.jl"); using PNLA;
-eqs = :((x^2 + y^2 + z^2 - 1)/cos(0.3), x-y, 2/sqrt(3)*(x + y + y*z)*(-y))
+eqs = :((x^2 + y^2 + z^2 - 1)/cos(0.3), x-y, 2/sqrt(3)*(x + y + y*z)^2*(-y))
 var = :(x,y,z)
 sys = SymSys(eqs, var)
 
@@ -22,7 +22,7 @@ vart = "x,y,z"
 syst = SymSys(eqst, vart)
 ```
 
-The SymSys object holds in addition to the previously defined equations and variables, a Function object. It is recommended to use this function through the evalsys function in the PNLA package:
+Whereas division by polynomial other than a constant is not allowed, the user can easily use functions to compute coefficients. A factor based construction is allowed and simplifies designing systems based upon intersection and union of varieties using polynomials that vanish on the desired variety. The SymSys object holds in addition to the previously defined equations and variables, a Function object. It is recommended to use this function through the evalsys function in the PNLA package:
 
 ```julia
 n = 3
