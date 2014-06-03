@@ -143,7 +143,7 @@ function sym2poly(symsys::SymSys, m::MonomialOrder)
 end
 
 # Monomial ordering occurs relative to the order stored by the SymSys object.
-sym2poly(symsys::SymSys, mfun::Function) = sym2poly(symsys, mfun(symsys.vars))
+sym2poly(symsys::SymSys, mfun::Function = tdeg(symsys.vars)) = sym2poly(symsys, mfun(symsys.vars))
 
 #SYM2POLY
 function sym2poly_symbol(symbol::Symbol, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
@@ -501,17 +501,25 @@ function poly2sym_monomial(expn::SparseMatrixCSC{ep,Int64}, vars::Expr)
     return term
 end
 
-# Evaluates equation system in points stored as rows in a matrix
+# Evaluates equation system in points stored as columns in a matrix
 function evalsys{T<:Number}(sys::SymSys, val::Array{T,2})
-    vcat([ collect(sys.func(convert(Array{cp,2}, val[i,:])...))' for i in 1:size(val,1) ]...)
+    @assert length(sys.vars.args) == size(val,1)
+    valcp::Array{cp,2} = convert(Array{cp,2}, val)
+
+    vcat([ collect(sys.func(valcp[:,i]...))' for i in 1:size(valcp,2) ]...)
 end
 
-# Evaluates equation system using array of vectors
-function evalsys{T<:Number}(sys::SymSys, val::Array{Vector{T},1})
-    vcat([ collect(sys.func(convert(Vector{cp},val[i])...)') for i in 1:length(val) ]...)
+# Evaluates equation system using 1-dim array of vectors
+function evalsys(sys::SymSys, val::Array{Any,1})
+    evalsys(sys, convert(Array{cp,2}, cat(2, val...)))
 end
 
-evalsys(sys::SymSys, val::Array{Any,1}) = evalsys(sys, convert(Array{Vector{cp},1}, val))
+# Evaluates equations system using a variable number of vectors
+evalsys{T<:Number}(sys::SymSys, x::Vector{T}...) = evalsys(sys, cat(2, x...))
+
+# Special case for univariate polynomial evaluation (+ var. arg. fix)
+evalsys(sys::SymSys,) = error("No evaluation points given")
+evalsys(sys::SymSys, x::Number...) = evalsys(sys, convert(Array{cp,2}, collect(x)'))
 
 # Processes term of type Expression and determines first operator
 function process_term(eq::Expr, opdict::Dict{Symbol,Function}, vardict::Dict{Symbol,Integer})
