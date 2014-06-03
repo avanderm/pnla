@@ -5,7 +5,7 @@ Polynomial Numerical Linear Algebra package for Julia
 
 # Introduction
 
-This pakcga is in development. For a great PNLA package in a MATLAB/Oktave environment, check out Kim Batselier's code project [here](https://github.com/kbatseli/PNLA_MATLAB_OCTAVE).
+This package is in development. For a great PNLA package in a MATLAB/Oktave environment, check out Kim Batselier's code project [here](https://github.com/kbatseli/PNLA_MATLAB_OCTAVE).
 
 # Constructing systems
 
