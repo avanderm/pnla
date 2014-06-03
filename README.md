@@ -22,7 +22,7 @@ vart = "x,y,z"
 syst = SymSys(eqst, vart)
 ```
 
-Whereas division by polynomial other than a constant is not allowed, the user can easily use functions to compute coefficients. A factor based construction is allowed and simplifies designing systems based upon intersection and union of varieties using polynomials that vanish on the desired variety. The SymSys object holds in addition to the previously defined equations and variables, a Function object. It is recommended to use this function through the evalsys function in the PNLA package:
+Whereas division by polynomials other than a constant is not allowed, the user can easily use functions to compute coefficients. A factor based construction is permitted and simplifies designing systems based upon intersection and union of varieties using polynomials that vanish on the desired variety. The SymSys object holds in addition to the previously defined equations and variables, a Function object. It is recommended to use this function through the evalsys function in the PNLA package:
 
 ```julia
 n = 3
