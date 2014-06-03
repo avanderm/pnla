@@ -13,9 +13,13 @@ In order to start working, a system of polynomial equations is needed. This Juli
 
 ```
 include("pnla.jl"); using PNLA;
-eqs = :(x^2 + y^2 + z^2 -1, x-y, 2*(x + y + y*z)*(-y))
+eqs = :((x^2 + y^2 + z^2 - 1)/cos(0.3), x-y, 2/sqrt(3)*(x + y + y*z)*(-y))
 var = :(x,y,z)
 sys = SymSys(eqs, var)
+
+eqst = "(x^2 + y^2 + z^2 - 1)/cos(0.3), x-y, 2/sqrt(3)*(x + y + y*z)*(-y)"
+vart = "x,y,z"
+syst = SymSys(eqst, vart)
 ```
 
 The SymSys object holds in addition to the previously defined equations and variables, a Function object. It is recommended to use this function through the evalsys function in the PNLA package:
@@ -36,4 +40,49 @@ methods(evalsys)
 uni = :((x-1)*(x-1.5)*(x-3)*(x-4) + 10*x)
 sys = SymSys(uni, :(x))
 evalsys(sys, 2.0, 3.0, 4.0)
+```
+
+# Numerical representation
+
+In order to start working with the numerical tools in the PNLA package, we need to construct a PolySys object out of the SymSys object. This can be achieved using the sym2poly function. In constrast to a SymSys object, which contains expression, the PolySys object has two fields:
+
+1. Vector of coefficients for the Vandermonde monomials
+2. The exponents of the Vandermonde monomials
+
+The user is free to apply a monomial order, which will always be relative to the implicit order established by the variable expression found in the SymSys object. By default, the graded reverse lexicographic order is used:
+
+```
+polysys = sym2poly(sys)
+polysys = sym2poly(sys, tdeg("x,y,z"))
+polysys = sym2poly(sys, tdeg(:(x,y,z))
+
+# Predefined monomial orders: lexicographic and graded lexicographic
+polysys = sym2poly(sys, plex("y,x,z"))
+polysys = sym2poly(sys, grlex("z,x,y"))
+
+# Using a custom monomial order weighing matrix
+polysys = sym2poly(sys, MonomialOrder([ 1 1 1; -1 0 0; 0 0 -1]))
+```
+
+# Symbolic representation
+
+The reverse process requires a user-supplied list of variables. The method poly2sym expresses the PolySys object as a sum of monomials
+
+```
+symsys = poly2sym(polysys, "x,y,z")
+symsys = poly2sym(polysys, :(x,y,z))
+```
+
+The user may supply a monomial order or opt for anonymous variables
+
+```
+symsys = poly2sym(polysys, "x,y,z", tdeg("y,x,z"))
+symsys = poly2sym(polysys)
+```
+
+For better stability, the nested Horner scheme can be used. This will alter the construction of the equations expression. The same calls as with the poly2sym method can be made.
+
+```
+nestedsys = poly2horner(polysys, "x,y,z")
+nestedsys = poly2horner(polysys)
 ```
