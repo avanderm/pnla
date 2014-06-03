@@ -44,7 +44,7 @@ evalsys(sys, 2.0, 3.0, 4.0)
 
 # Numerical representation
 
-In order to start working with the numerical tools in the PNLA package, we need to construct a PolySys object out of the SymSys object. This can be achieved using the sym2poly function. In constrast to a SymSys object, which contains expression, the PolySys object has two fields:
+In order to start working with the numerical tools in the PNLA package, we need to construct a PolySys object out of the SymSys object. This can be achieved using the sym2poly function. In contrast to a SymSys object, which contains expression, the PolySys object has two fields:
 
 1. Vector of coefficients for the Vandermonde monomials
 2. The exponents of the Vandermonde monomials
